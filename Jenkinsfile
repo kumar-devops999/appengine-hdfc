@@ -58,17 +58,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    echo "===== Activating Virtualenv ====="
+                    echo "===== Activating Virtual Environment ====="
                     . venv/bin/activate
                     python3 --version
+
+                    echo "===== Cleaning old deployment artifacts ====="
+                    rm -rf .gcloudignore staging/
 
                     echo "===== Authenticating with GCP ====="
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project $PROJECT_ID
 
-                    echo "===== Deploying App to App Engine ====="
+                    echo "===== Deploying App Engine with python311 ====="
                     export CLOUDSDK_PYTHON=python3
-                    gcloud app deploy app.yaml --quiet --verbosity=info
+                    gcloud app deploy app.yaml --runtime=python311 --quiet --verbosity=info
                     '''
                 }
             }
