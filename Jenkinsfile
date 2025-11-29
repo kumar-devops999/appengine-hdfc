@@ -69,9 +69,9 @@ pipeline {
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project $PROJECT_ID
 
-                    echo "===== Deploying App Engine with python311 ====="
+                    echo "===== Deploying App Engine ====="
                     export CLOUDSDK_PYTHON=python3
-                    gcloud app deploy app.yaml --runtime=python311 --quiet --verbosity=info
+                    gcloud app deploy app.yaml --quiet --verbosity=info
                     '''
                 }
             }
