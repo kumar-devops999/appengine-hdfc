@@ -1,20 +1,22 @@
 pipeline {
     agent any
+
     environment {
         PROJECT_ID = 'resolute-bloom-476105-f9'
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')
-        CLOUDSDK_PYTHON = 'python3'
     }
+
     stages {
-        stage('Setup Python') {
+
+        stage('Setup Python 3.11') {
             steps {
                 echo "===== Setting up Python 3.11 ====="
                 sh '''
-                python3 --version
-                python3 -m venv venv
-                . venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
+                    python3 --version
+                    python3 -m venv venv
+                    source venv/bin/activate
+
+                    pip install --upgrade pip setuptools wheel
+                    pip install -r requirements.txt
                 '''
             }
         }
@@ -22,19 +24,19 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 echo "===== Cleaning old deployment artifacts ====="
-                sh '''
-                rm -rf .gcloudignore staging/
-                '''
+                sh 'rm -rf .gcloudignore staging/'
             }
         }
 
         stage('Authenticate GCP') {
             steps {
                 echo "===== Authenticating with GCP ====="
-                sh '''
-                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                gcloud config set project $PROJECT_ID
-                '''
+                withCredentials([file(credentialsId: 'gcp-service-account', variable: 'KEYFILE')]) {
+                    sh '''
+                        gcloud auth activate-service-account --key-file=$KEYFILE
+                        gcloud config set project ${PROJECT_ID}
+                    '''
+                }
             }
         }
 
@@ -42,12 +44,13 @@ pipeline {
             steps {
                 echo "===== Deploying App Engine ====="
                 sh '''
-                . venv/bin/activate
-                gcloud app deploy app.yaml --quiet --verbosity=info
+                    source venv/bin/activate
+                    gcloud app deploy app.yaml --quiet --verbosity=info
                 '''
             }
         }
     }
+
     post {
         always {
             echo "Cleaning up workspace..."
