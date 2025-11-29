@@ -20,21 +20,17 @@ pipeline {
             }
         }
 
-        stage('Install Python 3.10 & Dependencies') {
+        stage('Install Dependencies') {
             steps {
                 script {
                     sh '''
-                    echo "===== Installing Python 3.10 ====="
-                    sudo apt-get update -y
-                    sudo apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
+                    echo "===== Using System Python ====="
+                    python3 --version
 
-                    echo "===== Verify Python Version ====="
-                    python3.10 --version
+                    echo "===== Creating Virtual Environment ====="
+                    python3 -m venv venv
 
-                    echo "===== Creating Python 3.10 Virtual Environment ====="
-                    python3.10 -m venv venv
-
-                    echo "===== Activating Virtualenv & Installing Dependencies ====="
+                    echo "===== Activating Virtual Environment & Installing Dependencies ====="
                     . venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
@@ -71,7 +67,7 @@ pipeline {
                     gcloud config set project $PROJECT_ID
 
                     echo "===== Deploying App to App Engine ====="
-                    export CLOUDSDK_PYTHON=python3.10
+                    export CLOUDSDK_PYTHON=python3
                     gcloud app deploy app.yaml --quiet --verbosity=info
                     '''
                 }
