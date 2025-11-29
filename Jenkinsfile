@@ -8,7 +8,7 @@ pipeline {
 
     stages {
 
-        stage('Clean workspace') {
+        stage('Clean Workspace') {
             steps {
                 cleanWs()
             }
@@ -26,19 +26,15 @@ pipeline {
                     sh '''
                     echo "===== Installing Python 3.10 ====="
                     sudo apt-get update -y
-                    sudo apt-get install -y software-properties-common
-                    sudo add-apt-repository ppa:deadsnakes/ppa -y
-                    sudo apt-get update -y
-                    sudo apt-get install -y python3.10 python3.10-venv python3.10-dev
+                    sudo apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip
 
-                    echo "===== Python Versions Installed ====="
-                    python3 --version || true
-                    python3.10 --version || true
+                    echo "===== Verify Python Version ====="
+                    python3.10 --version
 
                     echo "===== Creating Python 3.10 Virtual Environment ====="
                     python3.10 -m venv venv
 
-                    echo "===== Activating Virtualenv & Installing Requirements ====="
+                    echo "===== Activating Virtualenv & Installing Dependencies ====="
                     . venv/bin/activate
                     pip install --upgrade pip
                     pip install -r requirements.txt
@@ -50,13 +46,13 @@ pipeline {
         stage('Validate app.yaml') {
             steps {
                 sh '''
-                echo "===== PWD ====="
+                echo "===== Current Directory ====="
                 pwd
 
-                echo "===== LISTING PROJECT FILES ====="
-                ls -R
+                echo "===== Listing Files ====="
+                ls -l
 
-                echo "===== app.yaml CONTENT ====="
+                echo "===== app.yaml Content ====="
                 cat app.yaml
                 '''
             }
@@ -66,7 +62,7 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    echo "===== Using Python inside Virtualenv ====="
+                    echo "===== Activating Virtualenv ====="
                     . venv/bin/activate
                     python3 --version
 
@@ -74,8 +70,7 @@ pipeline {
                     gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
                     gcloud config set project $PROJECT_ID
 
-                    echo "===== Deploying to App Engine ====="
-                    . venv/bin/activate
+                    echo "===== Deploying App to App Engine ====="
                     export CLOUDSDK_PYTHON=python3.10
                     gcloud app deploy app.yaml --quiet --verbosity=info
                     '''
@@ -86,7 +81,7 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up...'
+            echo 'Cleaning up workspace...'
             cleanWs()
         }
         success {
