@@ -3,59 +3,82 @@ pipeline {
 
     environment {
         PROJECT_ID = 'resolute-bloom-476105-f9'
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')  // Service account credential
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')
     }
 
     stages {
+
+        stage('Clean workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 git branch: 'main', url: 'https://github.com/praveen-goud999/appengine-aug.git'
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install Python 3.10 & Dependencies') {
             steps {
                 script {
-                    // Create and activate a virtual environment, then install dependencies
                     sh '''
-                    # Update apt package list
+                    echo "===== Installing Python 3.10 ====="
                     sudo apt-get update -y
-                    
-                    # Install Python3 and development tools if not installed
-                    sudo apt-get install -y python3-pip python3-dev python3-venv bash
-                    
-                    # Create a virtual environment
-                    python3 -m venv venv
-                    
-                    # Activate the virtual environment using bash
-                    . venv/bin/activate  # Using dot (.) instead of 'source'
-                    
-                    # Upgrade pip inside the virtual environment
+                    sudo apt-get install -y software-properties-common
+                    sudo add-apt-repository ppa:deadsnakes/ppa -y
+                    sudo apt-get update -y
+                    sudo apt-get install -y python3.10 python3.10-venv python3.10-dev
+
+                    echo "===== Python Versions Installed ====="
+                    python3 --version || true
+                    python3.10 --version || true
+
+                    echo "===== Creating Python 3.10 Virtual Environment ====="
+                    python3.10 -m venv venv
+
+                    echo "===== Activating Virtualenv & Installing Requirements ====="
+                    . venv/bin/activate
                     pip install --upgrade pip
-                    
-                    # Install dependencies from requirements.txt
                     pip install -r requirements.txt
                     '''
                 }
             }
         }
 
+        stage('Validate app.yaml') {
+            steps {
+                sh '''
+                echo "===== PWD ====="
+                pwd
+
+                echo "===== LISTING PROJECT FILES ====="
+                ls -R
+
+                echo "===== app.yaml CONTENT ====="
+                cat app.yaml
+                '''
+            }
+        }
+
         stage('Deploy to Google App Engine') {
             steps {
                 script {
-                    // Ensure gcloud is installed and show working directory
-                    sh 'gcloud --version'
-                    sh 'pwd'  // Print the working directory
-                    sh 'ls -l'  // List contents to ensure app.yaml is present
+                    sh '''
+                    echo "===== Using Python inside Virtualenv ====="
+                    . venv/bin/activate
+                    python3 --version
 
-                    // Authenticate with Google Cloud using service account
-                    sh 'gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}'
+                    echo "===== Authenticating with GCP ====="
+                    gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+                    gcloud config set project $PROJECT_ID
 
-                    // Set the project ID for Google Cloud
-                    sh 'gcloud config set project $PROJECT_ID'
-
-                    // Deploy the application to App Engine
-                    sh 'gcloud app deploy app.yaml --quiet'  // Quiet flag prevents interactive prompts
+                    echo "===== Deploying to App Engine ====="
+                    . venv/bin/activate
+                    export CLOUDSDK_PYTHON=python3.10
+                    gcloud app deploy app.yaml --quiet --verbosity=info
+                    '''
                 }
             }
         }
@@ -64,13 +87,11 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
-            cleanWs()  // Optional: Clean workspace after the pipeline
+            cleanWs()
         }
-
         success {
             echo 'Deployment successful!'
         }
-
         failure {
             echo 'Deployment failed!'
         }
