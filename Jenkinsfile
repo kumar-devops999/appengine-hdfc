@@ -1,93 +1,63 @@
 pipeline {
     agent any
-
     environment {
         PROJECT_ID = 'resolute-bloom-476105-f9'
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account-key')
+        CLOUDSDK_PYTHON = 'python3'
     }
-
     stages {
-
-        stage('Clean Workspace') {
+        stage('Setup Python') {
             steps {
-                cleanWs()
-            }
-        }
-
-        stage('Clone Repository') {
-            steps {
-                git branch: 'main', url: 'https://github.com/praveen-goud999/appengine-aug.git'
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    sh '''
-                    echo "===== Using System Python ====="
-                    python3 --version
-
-                    echo "===== Creating Virtual Environment ====="
-                    python3 -m venv venv
-
-                    echo "===== Activating Virtual Environment & Installing Dependencies ====="
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                    '''
-                }
-            }
-        }
-
-        stage('Validate app.yaml') {
-            steps {
+                echo "===== Setting up Python 3.11 ====="
                 sh '''
-                echo "===== Current Directory ====="
-                pwd
-
-                echo "===== Listing Files ====="
-                ls -l
-
-                echo "===== app.yaml Content ====="
-                cat app.yaml
+                python3 --version
+                python3 -m venv venv
+                . venv/bin/activate
+                pip install --upgrade pip
+                pip install -r requirements.txt
                 '''
             }
         }
 
-        stage('Deploy to Google App Engine') {
+        stage('Clean Workspace') {
             steps {
-                script {
-                    sh '''
-                    echo "===== Activating Virtual Environment ====="
-                    . venv/bin/activate
-                    python3 --version
+                echo "===== Cleaning old deployment artifacts ====="
+                sh '''
+                rm -rf .gcloudignore staging/
+                '''
+            }
+        }
 
-                    echo "===== Cleaning old deployment artifacts ====="
-                    rm -rf .gcloudignore staging/
+        stage('Authenticate GCP') {
+            steps {
+                echo "===== Authenticating with GCP ====="
+                sh '''
+                gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                gcloud config set project $PROJECT_ID
+                '''
+            }
+        }
 
-                    echo "===== Authenticating with GCP ====="
-                    gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-                    gcloud config set project $PROJECT_ID
-
-                    echo "===== Deploying App Engine ====="
-                    export CLOUDSDK_PYTHON=python3
-                    gcloud app deploy app.yaml --quiet --verbosity=info
-                    '''
-                }
+        stage('Deploy to App Engine') {
+            steps {
+                echo "===== Deploying App Engine ====="
+                sh '''
+                . venv/bin/activate
+                gcloud app deploy app.yaml --quiet --verbosity=info
+                '''
             }
         }
     }
-
     post {
         always {
-            echo 'Cleaning up workspace...'
+            echo "Cleaning up workspace..."
             cleanWs()
         }
         success {
-            echo 'Deployment successful!'
+            echo "Deployment succeeded!"
         }
         failure {
-            echo 'Deployment failed!'
+            echo "Deployment failed!"
         }
     }
 }
