@@ -13,7 +13,8 @@ pipeline {
                 sh '''
                     python3 --version
                     python3 -m venv venv
-                    source venv/bin/activate
+
+                    . venv/bin/activate
 
                     pip install --upgrade pip setuptools wheel
                     pip install -r requirements.txt
@@ -44,7 +45,7 @@ pipeline {
             steps {
                 echo "===== Deploying App Engine ====="
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     gcloud app deploy app.yaml --quiet --verbosity=info
                 '''
             }
