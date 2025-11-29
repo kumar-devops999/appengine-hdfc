@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_ID = 'kiran400'
+        PROJECT_ID = 'resolute-bloom-476105-f9'
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')  // Service account credential
     }
 
